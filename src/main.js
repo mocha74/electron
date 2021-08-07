@@ -5,8 +5,11 @@ import store from './store'
 import vuetify from './plugins/vuetify'
 import 'roboto-fontface/css/roboto/roboto-fontface.css'
 import '@mdi/font/css/materialdesignicons.css'
+import { Editor, Viewer } from '@toast-ui/vue-editor'
 
 Vue.config.productionTip = false
+Vue.component('editor', Editor)
+Vue.component('viewer', Viewer)
 
 new Vue({
   router,
