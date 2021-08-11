@@ -65,7 +65,7 @@ export default {
       const r = dialog.showOpenDialogSync(options)
       if (!r) return
       this.form.content = fs.readFileSync(r[0]).toString()
-      this.$refs.toastuiEditor.invoke("setMarkdown", this.form.content);
+      this.$refs.toastuiEditor.invoke("setMarkdown", this.form.content)
       console.log(this.text)
     },
     fileExport() {
