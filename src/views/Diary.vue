@@ -13,6 +13,9 @@
                 <template v-slot:[`item.createAt`]="{ item }">
                     {{ item.createAt.toLocaleString() }}
                 </template>
+                <template v-slot:[`item.updateAt`]="{ item }">
+                    {{ item.updateAt.toLocaleString() }}
+                </template>
             </v-data-table>            
         </v-card-text>
       </v-card>
@@ -87,12 +90,17 @@ export default {
       items: []
     }
   },
-  mounted() {
+  async mounted() {
+    this.removeAll(),
     this.list()
   },
   methods: {
     onEditorChange() {
         this.content = this.$refs.toastuiEditor1.invoke("getMarkdown");        
+    },
+    removeAll() {
+      DiaryContent.remove({}, { multi: true }),
+      Diary.remove({}, { multi: true })
     },
     dialogAddOpen () {
         this.title = '',
