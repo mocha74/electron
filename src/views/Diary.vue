@@ -10,11 +10,14 @@
         </v-toolbar>
         <v-card-text>
             <v-data-table :headers="headers" :items="items">
-                <template v-slot:[`item.createAt`]="{ item }">
+                <template v-slot:[`item.createAt`]="{ aaitem }">
                     {{ item.createAt.toLocaleString() }}
                 </template>
                 <template v-slot:[`item.updateAt`]="{ item }">
                     {{ item.updateAt.toLocaleString() }}
+                </template>
+                <template v-slot:[`item.title`]="{ item }">
+                    <a @click="dialogEditOpen(item)">{{ item.title }}</a>
                 </template>
             </v-data-table>            
         </v-card-text>
@@ -24,7 +27,7 @@
               <v-card-title>글 작성</v-card-title>
               <v-card-text>
                 <v-text-field lable="제목" v-model="title"></v-text-field>
-                <editor @change="onEditorChange" ref="toastuiEditor1"></editor>                
+                <editor @change="onEditorChange" initialEditType="wysiwyg" ref="toastuiEditor"></editor>                
               </v-card-text>
               <v-card-actions>
                   <v-btn @click="add">저장</v-btn>
@@ -37,7 +40,7 @@
               <v-card-title>글 수정</v-card-title>
               <v-card-text>
                 <v-text-field lable="제목" v-model="title"></v-text-field>
-                <editor ref="toastuiEditor2"></editor>                
+                <editor initialEditType="wysiwyg" ref="toastuiEditor" :initialValue="content"></editor>                
               </v-card-text>
               <v-card-actions>
                   <v-btn @click="update">저장</v-btn>
@@ -87,43 +90,68 @@ export default {
           { value: 'updateAt', text: '수정일'},
           { value: 'title', text: '제목'}
       ],
-      items: []
+      items: [],
+      select: null
     }
-  },
+  },  
   async mounted() {
-    this.removeAll(),
-    this.list()
+    //await this.removeAll(),
+    await this.list()
   },
   methods: {
     onEditorChange() {
-        this.content = this.$refs.toastuiEditor1.invoke("getMarkdown");        
-    },
-    removeAll() {
-      DiaryContent.remove({}, { multi: true }),
-      Diary.remove({}, { multi: true })
-    },
+      this.content = this.$refs.toastuiEditor.invoke("getMarkdown");
+    },   
+    async removeAll() {
+      await DiaryContent.remove({}, { multi: true })
+      await Diary.remove({}, { multi: true })
+    }, 
     dialogAddOpen () {
-        this.title = '',
-        this.content = '',
-        this.dialogAdd = true;
+      this.title = ''
+      this.content = ''
+      this.dialogAdd = true
     },
-    async add () {        
-        const dc = await DiaryContent.insert({ content: this.content })
-        await Diary.insert({ 
-            title: this.title,
-            _content: dc.id,
-            createAt: new Date(),
-            updateAt: new Date()
-        })
-        this.dialogAdd = false
-        await this.list()
+    async dialogEditOpen(item) {
+      //console.log('item', item)
+      this.title = item.title
+      const dc = await DiaryContent.findOne({ _id: item._content })
+      console.log('dc2', dc)
+      this.content = dc.content
+      console.log(this.$refs.toastuiEditor)
+      this.$refs.toastuiEditor.setMarkdown(this.content);
+      this.select = item      
+      this.dialogEdit = true
+    },
+    async add () {      
+      this.$refs.toastuiEditor.invoke("getMarkdown");
+      const dc = await DiaryContent.insert({ content: this.content })
+      //console.log('dc1', dc)
+      await Diary.insert({ 
+          title: this.title,
+          _content: dc._id,
+          createAt: new Date(),
+          updateAt: new Date()
+      })
+      this.dialogAdd = false
+      await this.list()
     },
     async list () {
         this.items = await Diary.find()
-        console.log(this.items)
+        //console.log(this.items)
     },
-    update () {
-
+    async update () {      
+      await DiaryContent.update({ _id: this.select._content }, { $set: { content: this.content } })
+      await Diary.update(
+        { _id: this.select._id },
+        { 
+          $set: {
+            title: this.title,
+            updateAt: new Date()
+          }
+        }
+      )
+      this.dialogEdit = false
+      await this.list()
     },
     del () {
 
