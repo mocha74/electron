@@ -1,9 +1,17 @@
 <template>
   <v-container fluid>    
       <v-card>
-        <v-toolbar dense flat color="primary" dark>
+        <v-toolbar flat color="primary" dark>
           <v-toolbar-title>파일 디비</v-toolbar-title>
           <v-spacer></v-spacer>
+          <v-text-field
+            flat
+            solo-inverted
+            hide-details
+            prepend-inner-icon="mid-magnify"
+            label="Search"
+            v-model="search"
+          />
           <v-btn icon @click="read()">
             <v-icon>mdi-read</v-icon>
           </v-btn>
@@ -14,6 +22,7 @@
         <v-data-table
           :headers="headers"
           :items="items"
+          :search="search"
         >
           <template v-slot:[`item.name`]="{ item }">
             <v-btn @click="execute(item)">{{item.name}}</v-btn>
@@ -24,9 +33,15 @@
           <template v-slot:[`item.size`]="{ item }">
             {{ byte(item.size) }}
           </template>
+          <template v-slot:[`item.rating`]="{ item }">
+            <v-rating v-model="item.rating" @input="ratingChange(item)"></v-rating>
+          </template>
           <template v-slot:[`item.tags`]="{ item }">
             <v-chip v-for="tag in item.tags" :key="tag" close @click:close="delTag(item, tag)">{{ tag }}</v-chip>
             <v-btn icon @click="openDialog(item)"><v-icon>mdi-plus</v-icon></v-btn>
+          </template>
+          <template v-slot:[`item._id`]="{ item }">
+            <v-btn icon @click="del(item)" color="error"><v-icon>mdi-delete</v-icon></v-btn>
           </template> 
         </v-data-table>
       </v-card>
@@ -49,13 +64,13 @@
 </template>
 
 <script>
+const { shell } = require('electron')
 const { dialog } = require('electron').remote
 const path = require('path')
 const byte = require('bytes')
 const fs = require('fs')
 const Datastore = require('nedb-promises')
 const DBFile = Datastore.create('dbFiles.db')
-const { shell } = require('electron')
 
 export default {
 
@@ -69,12 +84,15 @@ export default {
         //{ value: 'path', text: 'path' },
         { value: 'time', text: 'time' },
         { value: 'size', text: 'size' },
-        { value: 'tags', text: 'tags' }
+        { value: 'tags', text: 'tags' },
+        { value: 'rating', text: 'rating' },
+        { value: '_id', text: 'actions' }
       ],
       items: [],
       dialog: false,
       selectedItem: null,
-      tags: []
+      tags: [],
+      search: ''
     }
   },
   mounted () {
@@ -99,7 +117,7 @@ export default {
           path: p,
           time: stat.ctime,
           size: stat.size,
-          tags: []
+          tags: []          
         }
         const fr = await DBFile.findOne({ path: p })
         if (fr) continue
@@ -128,6 +146,14 @@ export default {
     async delTag (item, tag) {
       await DBFile.update({ _id: item._id }, { $pull: { tags: tag }})
       await this.fetch()
+    },
+    async del (item) {
+      await DBFile.remove({ _id: item._id })
+      await this.fetch()
+    },
+    async ratingChange(item) {
+      console.log(item)
+      await DBFile.update({ _id: item._id }, { $set: { rating: item.rating }})
     }
   }
 }
